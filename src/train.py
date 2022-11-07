@@ -75,33 +75,38 @@ def get_experiment_id(logs_dir: str):
 def generate_submission(model, ds):
     """ Generate submission """
 
-    names = tf.concat([n for n in ds.map(lambda img, mask, name: name)], axis=0)
-    names = names.numpy()
-    names = [name.decode() for name in names]
+    def submission_batch(batch_img, batch_name):
+        """ Submission file on a batch of data """
 
-    # TODO: machine runs out of memory !!!
-    # shape = (n, height, width, 4)
-    masks = model.predict(ds.map(lambda img, mask, name: img))
+        batch_name = [x.decode() for x in batch_name.numpy()]
+        batch_mask = model.predict(batch_img)
 
-    df = pd.DataFrame()
-    df['Image_Label'] = [f'{n}_{c}' for n in names for c in settings.CLASSES]
-    df['EncodedPixels'] = ''
-    df.set_index(['Image_Label'], inplace=True)
+        df = pd.DataFrame()
+        df['Image_Label'] = [f'{n}_{c}'
+                             for n in batch_name for c in settings.CLASSES]
+        df['EncodedPixels'] = ''
+        df.set_index(['Image_Label'], inplace=True)
 
-    for name, mask in zip(names, masks):
+        for name, mask in zip(batch_name, batch_mask):
 
-        mask = st.resize(mask, (350, 525), preserve_range=True)
+            mask = st.resize(mask, (350, 525), preserve_range=True)
 
-        for i, cloud in enumerate(settings.CLASSES):
-            mask_compact = mask_from_compact_notation_inverse(mask[..., i])
-            mask_compact = [str(x) for x in mask_compact]
-            mask_compact = ' '.join(mask_compact)
+            for i, cloud in enumerate(settings.CLASSES):
+                mask_compact = mask_from_compact_notation_inverse(mask[..., i])
+                mask_compact = [str(x) for x in mask_compact]
+                mask_compact = ' '.join(mask_compact)
 
-            df.loc[f'{name}_{cloud}', 'EncodedPixels'] = mask_compact
+                df.loc[f'{name}_{cloud}', 'EncodedPixels'] = mask_compact
 
-    df = df.reset_index()
-    df = df.sort_values(['Image_Label'])
-    df = df.reset_index(drop=True)
+        df = df.reset_index()
+
+        return df
+
+    dfs = [submission_batch(img, name) for img, _, name in ds]
+
+    df = (pd.concat(dfs, ignore_index=True)
+          .sort_values(['Image_Label'])
+          .reset_index(drop=True))
 
     return df
 

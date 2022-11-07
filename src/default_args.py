@@ -2,7 +2,6 @@ ds_args = dict(
     batch_size=32,
     prefetch_size=-1,
     cycle_length=2,  # number of concurrently opened files
-    max_files=None,  # max number of `.tfrecord` files to read from
     take_size=-1  # max number of elements
 )
 

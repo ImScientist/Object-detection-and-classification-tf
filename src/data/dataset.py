@@ -3,6 +3,8 @@ import glob
 import logging
 import tensorflow as tf
 
+import settings
+
 logging.basicConfig()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -12,23 +14,19 @@ def parse_ex_proto_fn(ex_proto_serialized):
     """ Parse the input tf.train.Example proto """
 
     feature_description = {
-        'Sugar': tf.io.FixedLenFeature([], tf.string),
-        'Gravel': tf.io.FixedLenFeature([], tf.string),
-        'Flower': tf.io.FixedLenFeature([], tf.string),
-        'Fish': tf.io.FixedLenFeature([], tf.string),
-        'image_raw': tf.io.FixedLenFeature([], tf.string),
-        'name': tf.io.FixedLenFeature([], tf.string)}
+        'name': tf.io.FixedLenFeature([], tf.string),
+        'image_raw': tf.io.FixedLenFeature([], tf.string)}
+
+    for c in settings.CLASSES:
+        feature_description[c] = tf.io.FixedLenFeature([], tf.string)
 
     ex_proto = tf.io.parse_single_example(
         serialized=ex_proto_serialized,
         features=feature_description)
 
-    mask = tf.concat([
-        tf.io.decode_png(ex_proto['Sugar'], channels=1),
-        tf.io.decode_png(ex_proto['Gravel'], channels=1),
-        tf.io.decode_png(ex_proto['Flower'], channels=1),
-        tf.io.decode_png(ex_proto['Fish'], channels=1),
-    ], axis=-1)
+    mask = tf.concat(
+        [tf.io.decode_png(ex_proto[c], channels=1) for c in settings.CLASSES],
+        axis=-1)
 
     image = tf.io.decode_jpeg(ex_proto['image_raw'])
     name = ex_proto['name']
@@ -62,7 +60,6 @@ def load_dataset(
         batch_size: int,
         prefetch_size: int,
         cycle_length: int = 2,
-        max_files: int = None,
         take_size: int = -1,
         augmentation: bool = False,
         keep_name: bool = False
@@ -75,14 +72,13 @@ def load_dataset(
     batch_size:
     prefetch_size:
     cycle_length: number of files to read concurrently
-    max_files: take all files if max_files=None
     take_size: take all elements of the dataset if take_size=-1
     augmentation: augment the data
     keep_name: keep image_name in the dataset
     """
 
     files = glob.glob(os.path.join(data_dir, '*.tfrecords'))
-    files = sorted(files)[:max_files]
+    files = sorted(files)
 
     args = {'num_parallel_calls': tf.data.AUTOTUNE}
 
