@@ -57,7 +57,8 @@ def get_best_checkpoint(
 
 
 def get_experiment_id(logs_dir: str):
-    """ Generate an unused experiment id by looking at the tensorboard entries """
+    """ Generate an unused experiment id by looking at the tensorboard entries
+    """
 
     experiments = os.listdir(logs_dir)
     experiments = map(lambda x: re.fullmatch(r'ex_(\d{3})', x), experiments)
@@ -112,10 +113,7 @@ def generate_submission(model, ds):
 
 
 def unet_model(height: int, width: int):
-    """ Adapt a unet model to our problem
-
-    https://github.com/qubvel/segmentation_models/blob/master/examples/multiclass%20segmentation%20(camvid).ipynb
-    """
+    """ Adapt a Unet model to our problem """
 
     # input dimensions should be multiples of 32
     height_unet = int(np.ceil(height / 32)) * 32
@@ -125,7 +123,7 @@ def unet_model(height: int, width: int):
     width_diff = width_unet - width
 
     model_unet = sm.Unet(
-        backbone_name='resnet18',  # 'resnet18'  'mobilenetv2'
+        backbone_name='resnet18',
         input_shape=(height_unet, width_unet, 3),
         encoder_weights='imagenet',
         encoder_freeze=True,
@@ -194,6 +192,7 @@ def train(
 
     model.compile(
         optimizer=tf.optimizers.Adam(learning_rate=0.01),
+        # Each pixel can belong to multiple segments
         loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=2, from_logits=True),
         metrics=[dice_coefficient])
 

@@ -1,4 +1,4 @@
-# Object detection and classification
+# Image segmentation with tensorflow
 
 Tran a model to detect cloud types from satellite images. The data is taken from the [Understanding Clouds from Satellite Images](https://www.kaggle.com/c/understanding_cloud_organization) Kaggle competition.
 
@@ -19,9 +19,7 @@ $DATA_DIR
 
 ## Data preprocessing
 
-We create `.tfrecords` files where each record contains bytestrings of compressed jpeg-images and of the masks which
-were compressed by storing them as png images. The dimensions of the images and masks are also reduced by the
-reduction factor `rf`.
+We create `.tfrecords` files where each record contains bytestrings of compressed jpeg-images and of the masks which were compressed by storing them as png images. The dimensions of the images and masks are also reduced by the reduction factor `rf`.
 ```shell
 # tr, va, te: train, validation, test split fractions
 python src/main.py create-datasets --tr=0.8 --va=0.1 --te=0.1 --rf=4

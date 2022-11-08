@@ -28,7 +28,7 @@ def log_experiment_parameters(log_data: dict, file_writer):
 
 
 def log_model_architecture(model, file_writer):
-    """ Store a non-interactive readable model architecture """
+    """ Store a non-interactive model architecture in tensorboard """
 
     with tempfile.NamedTemporaryFile('w', suffix=".png") as temp:
         _ = tf.keras.utils.plot_model(
@@ -39,8 +39,6 @@ def log_model_architecture(model, file_writer):
 
         im_frame = Image.open(temp.name)
         im_frame = np.asarray(im_frame)
-
-        """ Log the figure """
 
         with file_writer.as_default():
             tf.summary.image(
@@ -75,7 +73,7 @@ def plot_to_image(figure):
 
 
 class DisplayCallback(tf.keras.callbacks.Callback):
-    """ Store the predicted segments on a predefined set of images
+    """ Store the predicted segments on a fixed set of images
 
     Store the model architecture and experiment parameters in the beginning of
     the training
@@ -126,7 +124,21 @@ def create_callbacks(
         period: int = 10,
         experiment_data: dict = None
 ):
-    """ Generate model training callbacks """
+    """ Generate model training callbacks
+
+    Parameters
+    ----------
+      log_dir:
+      save_dir:
+      ds:
+      histogram_freq:
+      reduce_lr_patience:
+      profile_batch:
+      verbose:
+      early_stopping_patience:
+      period:
+      experiment_data:
+    """
 
     callbacks = [
         tfkc.TensorBoard(

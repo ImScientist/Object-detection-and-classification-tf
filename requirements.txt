@@ -1,1 +1,7 @@
-tensorflow==2.9.1
+tensorflow==2.10.0
+pandas==1.5.1
+matplotlib==3.6.2
+scikit-learn==1.1.3
+segmentation-models==1.0.1
+click==8.1.3
+pydot==1.4.2
