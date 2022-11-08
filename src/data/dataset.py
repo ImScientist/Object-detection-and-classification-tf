@@ -38,11 +38,13 @@ def remove_black_pixels_from_masks(el):
     """ Remove the areas in the mask where the image pixels are black
 
     Both image and mask hold values of type uint8.
+    Black pixels correspond to (0,0,0)
     """
 
     image = tf.cast(el['image'], tf.float32)
     mask = tf.cast(el['mask'], tf.float32)
 
+    # the sum across the 3 channels is 0 only for black pixels
     non_black_px = tf.clip_by_value(
         tf.reduce_sum(image, axis=-1, keepdims=True),
         tf.constant(0, tf.float32),

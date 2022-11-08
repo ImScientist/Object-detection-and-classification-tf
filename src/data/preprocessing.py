@@ -13,6 +13,8 @@ logger.setLevel(logging.INFO)
 
 
 def split_str(x: str) -> list[int]:
+    """ Map a string of ` `-separated numbers to a list of integers """
+
     if type(x) == str:
         return [int(el) for el in x.split(' ')]
     else:
@@ -24,7 +26,7 @@ def preprocess_labels_file(
         data_dir: str,
         n_el: int = None
 ):
-    """ Preprocess bboxes data """
+    """ Preprocess cav-file with bounding boxes """
 
     def getter(idx: int):
         """ Get idx from regex match """
@@ -38,7 +40,7 @@ def preprocess_labels_file(
             image=lambda x: x['Image_Label'].str.replace(pat, getter(1), regex=True),
             cloud_type=lambda x: x['Image_Label'].str.replace(pat, getter(2), regex=True),
             pixels=lambda x: (x[['cloud_type', 'EncodedPixels']]
-                              .apply(lambda y: {y[0]: split_str(y[1])}, 1)))
+                              .apply(lambda y: {y[0]: split_str(y[1])}, axis=1)))
         .groupby(['image'], as_index=False)
         .agg(pixels=('pixels', lambda x: dict(ChainMap(*x))))
         .assign(
@@ -55,8 +57,10 @@ def preprocess_labels_file(
 
 def _bytes_feature(value):
     """ Returns a bytes_list from a string / byte. """
+
     if isinstance(value, type(tf.constant(0))):
         value = value.numpy()  # BytesList won't unpack a string from an EagerTensor.
+
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
@@ -93,10 +97,10 @@ def mask_from_compact_notation(
     return mask
 
 
-def mask_from_compact_notation_inverse(mask: np.ndarray):
+def mask_from_compact_notation_inverse(mask: np.ndarray, threshold: float = 0):
     """ Inverse fn of `mask_from_compact_notation()` """
 
-    mask = (mask > 0) * 1  # map to 0 and 1
+    mask = (mask > threshold) * 1  # map to 0 and 1
     mask = mask.T
     mask = mask.reshape(-1)
 
@@ -136,7 +140,8 @@ def create_ex_proto(
     - store the bytes of the compressed image
     - compress the masks by using tf.io.encode_png() that interprets them as
         greyscale images
-    - optionally, we also resize both the images, and the masks
+    - optionally, we also resize both the images, and the masks (decrease by
+      `reduction_factor`)
     """
 
     height = 1400
@@ -175,19 +180,25 @@ def create_ex_proto(
 
 
 def create_tfrecords(
-        idx: pd.Index,
         df: pd.DataFrame,
         output_dir: str,
         partition_size: int = 400,
         reduction_factor: int = 1
 ):
-    """ Create tfrecords. Each record holds `partition_size` examples. """
+    """ Create tfrecords.
+
+    Each record holds `partition_size` examples.
+    The images and masks scales are reduced by `reduction_factor`.
+    """
 
     os.makedirs(output_dir)
+
+    idx = df.index
 
     chunks = len(idx) / partition_size
     chunks = int(np.ceil(chunks))
 
+    # split the index into chunks of up to `partition_size` elements
     idx_chunks = np.array_split(idx.to_numpy(), chunks)
 
     for i, idx_chunk in enumerate(idx_chunks):
@@ -286,7 +297,6 @@ def create_tr_va_te_datasets(
         tr_va_te_frac=tr_va_te_frac,
         stratify_cols=['Sugar', 'Gravel', 'Flower', 'Fish'],
         random_state=12)
-    idx_sb = df_sb.index
 
     output_tr = os.path.join(output_dir, 'train')
     output_va = os.path.join(output_dir, 'validation')
@@ -294,7 +304,7 @@ def create_tr_va_te_datasets(
     output_sb = os.path.join(output_dir, 'submission')
 
     args = {'reduction_factor': reduction_factor}
-    create_tfrecords(idx=idx_tr, df=df, output_dir=output_tr, **args)
-    create_tfrecords(idx=idx_va, df=df, output_dir=output_va, **args)
-    create_tfrecords(idx=idx_te, df=df, output_dir=output_te, **args)
-    create_tfrecords(idx=idx_sb, df=df_sb, output_dir=output_sb, **args)
+    create_tfrecords(df=df.loc[idx_tr], output_dir=output_tr, **args)
+    create_tfrecords(df=df.loc[idx_va], output_dir=output_va, **args)
+    create_tfrecords(df=df.loc[idx_te], output_dir=output_te, **args)
+    create_tfrecords(df=df_sb, output_dir=output_sb, **args)
